@@ -6,6 +6,8 @@ if len(sys.argv) == 3:
 	import eventlet.wsgi
 	eventlet.monkey_patch()
 
+import mimetypes
+
 import httpx
 from pigwig import PigWig, Response
 
@@ -15,11 +17,39 @@ def root(request, short=None):
 
 def static(request, path):
 	content_type, _ = mimetypes.guess_type(path)
-	with open('static/' + path, 'rb') as f:
-		return Response(f.read(), content_type=content_type)
+	try:
+		with open('static/' + path, 'rb') as f:
+			return Response(f.read(), content_type=content_type)
+	except FileNotFoundError:
+		return Response('', code=404)
 
 def flight_capacity(request):
-	return Response.json(3)
+	date = request.query['date']
+
+	client = httpx.Client(headers={'User-Agent': 'Mozilla/5.0'})
+
+	r = client.get("https://www.united.com/api/token/anonymous")
+	r.raise_for_status()
+	token = r.json()['data']['token']['hash']
+
+	headers = {
+		'Content-Type': 'application/json',
+		'Origin': 'https://www.united.com',
+		'X-Authorization-Api': 'bearer ' + token,
+		'Accept-Language': 'en-US',
+	}
+	url = 'https://www.united.com/api/flight/upgradeListExtended?flightNumber=857&flightDate=%s&fromAirportCode=SFO' % date
+	r = client.get(url, timeout=10, headers=headers)
+	r.raise_for_status()
+	pbts = r.json()['pbts']
+	cabins = []
+	for pbt in pbts:
+		cabins.append({
+			'name': pbt['cabin'],
+			'booked': pbt['booked'],
+			'capacity': pbt['capacity'],
+		})
+	return Response.json(cabins)
 
 routes = [
 	('GET', '/', root),

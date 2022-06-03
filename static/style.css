@@ -1,0 +1,8 @@
+body {
+    font-family: sans-serif;
+}
+
+section {
+    display: inline-block;
+    width: 400px;
+}
