@@ -7,6 +7,7 @@ if len(sys.argv) == 3:
 	eventlet.monkey_patch()
 
 import mimetypes
+import time
 
 import httpx
 from pigwig import PigWig, Response
@@ -27,15 +28,10 @@ def flight_capacity(request):
 	date = request.query['date']
 
 	client = httpx.Client(headers={'User-Agent': 'Mozilla/5.0'})
-
-	r = client.get("https://www.united.com/api/token/anonymous")
-	r.raise_for_status()
-	token = r.json()['data']['token']['hash']
-
 	headers = {
 		'Content-Type': 'application/json',
 		'Origin': 'https://www.united.com',
-		'X-Authorization-Api': 'bearer ' + token,
+		'X-Authorization-Api': 'bearer ' + _token(),
 		'Accept-Language': 'en-US',
 	}
 	url = 'https://www.united.com/api/flight/upgradeListExtended?flightNumber=857&flightDate=%s&fromAirportCode=SFO' % date
@@ -50,6 +46,18 @@ def flight_capacity(request):
 			'capacity': pbt['capacity'],
 		})
 	return Response.json(cabins)
+
+cached_token = None
+cached_token_time = 0
+def _token():
+	global cached_token, cached_token_time
+	now = time.time()
+	if cached_token_time + 60 * 5 < now:
+		r = httpx.get("https://www.united.com/api/token/anonymous", headers={'User-Agent': 'Mozilla/5.0'})
+		r.raise_for_status()
+		cached_token = r.json()['data']['token']['hash']
+		cached_token_time = now
+	return cached_token
 
 routes = [
 	('GET', '/', root),
