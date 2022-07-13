@@ -3,7 +3,7 @@
     const dates = [
         '2022-07-13',
         '2022-07-15',
-        '2022-07-16',
+        // '2022-07-16',
         '2022-07-17',
         '2022-07-20',
         '2022-07-22',
@@ -59,7 +59,9 @@
             totalCapacity += cabin['capacity'];
         }
         const div = document.createElement('div');
-        div.innerText += `${totalBooked}/${totalCapacity} = ${totalBooked/totalCapacity}`;
+        const percentage = (totalBooked / totalCapacity).toLocaleString(
+            undefined, {'style': 'percent', 'minimumFractionDigits': 2});
+        div.innerText += `${totalBooked}/${totalCapacity} = ${percentage}`;
         section.appendChild(div);
     }
 })();
